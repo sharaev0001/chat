@@ -50,15 +50,7 @@ public:
 
     enum ItemRole {
         UserIdRole,
-        UserNameRole,
-        GenderRole,
-        UserColorRole
-    };
-
-    enum Gender {
-        Unknown,
-        Male,
-        Female
+        UserNameRole
     };
 
     void connectToServer();
@@ -68,38 +60,27 @@ public:
     QString datetime();
 
     void onUserAuthorized(int userId,
-                          const QString &userName,
-                          Gender gender);
+                          const QString &userName);
 
     void onUserConnected(int userId,
-                         const QString &userName,
-                         Gender gender,
-                         const QString &userColor);
+                         const QString &userName);
     void addUser(int userId,
-                 const QString &userName,
-                 Gender gender,
-                 const QString &userColor);
+                 const QString &userName);
     void addUsers(const QJsonArray &users);
 
     void onUserDisconnected(int userId,
-                            const QString &userName,
-                            Gender gender,
-                            const QString &userColor);
+                            const QString &userName);
     void removeUser(int userId);
 
     void onConnectionLost(int userId,
-                          const QString &userName,
-                          Gender gender,
-                          const QString &userColor);
+                          const QString &userName);
 
     void onPublicMessage(int userId,
                          const QString &userName,
-                         const QString &userColor,
                          const QString &text);
 
     void onPrivateMessage(int userId,
                           const QString &userName,
-                          const QString &userColor,
                           const QString &text);
 
 public slots:
@@ -119,11 +100,11 @@ private:
     AuthDialog::ConnectionData m_connectionData;
 
     int m_toUserId; // кому отправляем сообщение
-
+    int m_online; //проверка онлайна
     int m_userId; // id нашего соединения
-    Gender m_gender; // половая принадлежность
+
     QString m_userName; // имя пользователя
-    QString m_usercolor; // цвет имени пользователя
+
 };
 
 #endif // WIDGET_H

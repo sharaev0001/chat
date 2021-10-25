@@ -107,8 +107,6 @@ void Widget::saveConnectionData()
     settings.setValue("server", m_connectionData.server);
     settings.setValue("port", m_connectionData.port);
     settings.setValue("userName", m_connectionData.userName);
-    settings.setValue("gender", m_connectionData.gender);
-    settings.setValue("userColor", m_connectionData.userColor);
 }
 
 void Widget::restoreConnectionData()
@@ -119,8 +117,6 @@ void Widget::restoreConnectionData()
     m_connectionData.server = settings.value("server", "127.0.0.1").toString();
     m_connectionData.port = settings.value("port", 27800).toInt();
     m_connectionData.userName = settings.value("userName", "Инкогнито").toString();
-    m_connectionData.gender = settings.value("gender", 0).toInt();
-    m_connectionData.userColor = settings.value("userColor", "#34495e").toString();
 }
 
 void Widget::connectToServer()
@@ -143,9 +139,7 @@ void Widget::connectToServer()
         m_webSocket->open(QUrl(QString("ws://%1:%2?userName=%3&userColor=%4&gender=%5")
                                .arg(m_connectionData.server)
                                .arg(m_connectionData.port)
-                               .arg(m_connectionData.userName)
-                               .arg(QString(m_connectionData.userColor).replace("#","%23"))
-                               .arg(m_connectionData.gender)));
+                               .arg(m_connectionData.userName)));
     }
     else {
         close();
@@ -164,11 +158,13 @@ void Widget::closePrivateMessage()
 
 void Widget::privateWithUserFromItem(QListWidgetItem *item)
 {
-    m_toUserId = item->data(UserIdRole).toInt();
+
+    m_toUserId = item->data(Qt::UserRole).toInt();
     ui->toolButton_closePrivateMessage->show();
 
-    QString toUserName = item->data(UserNameRole).toString();// Было toInt();
-    ui->label_receiver->setText(QString("Отправить пользователю <b>%1</b>")
+    QString toUserName = item->text();// Было item->data(UserNameRole).toString();
+
+    ui->label_receiver->setText(QString("Отправить пользователю %1")
                                 .arg(toUserName));
 }
 
@@ -180,13 +176,13 @@ QString Widget::datetime()
 }
 
 void Widget::onUserAuthorized(int userId,
-                              const QString &userName,
-                              Gender gender)
+                              const QString &userName)
 {
     // При авторизации сохраняем данные "о себе"
     m_userId = userId;
     m_userName = userName;
-    m_gender = gender;
+
+    m_online = 1;
 
     QString html = QString("%1 <span style='color:#7f8c8d'>"
                            "<i>Вы авторизованы с именем <b>%2</b></span>")
@@ -196,39 +192,32 @@ void Widget::onUserAuthorized(int userId,
 }
 
 void Widget::onUserConnected(int userId,
-                           const QString &userName,
-                           Widget::Gender gender,
-                           const QString &userColor)
+                           const QString &userName)
 {
     // При подключении нового пользователя, добавляем его в список
-    addUser(userId, userName, gender, userColor);
+    addUser(userId, userName);
 
     // Добавляем сообщение о входе
     QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i><b><a style='color:%2' href='action://putUserName?userName=%3&userId=%5'>%3</a></b>"
-                           " %4 в чат</i></span>")
+                           "<i><b><a href='action://putUserName?userName=%2&userId=%3'>%2</a></b>"
+                           " вошел в чат</i></span>")
             .arg(datetime())
-            .arg(userColor)
             .arg(userName)
-            .arg(gender == 2 ? "вошла" : "вошёл")
             .arg(userId);
 
     ui->textBrowser->append(html);
 }
 
 void Widget::addUser(int userId,
-                     const QString &userName,
-                     Widget::Gender gender,
-                     const QString &userColor)
+                     const QString &userName)
 {
     QListWidgetItem *item = new QListWidgetItem;
+
     item->setData(UserIdRole, userId);
     item->setData(UserNameRole, userName);
-    item->setData(GenderRole, gender);
-    item->setData(UserColorRole, userColor);
-    item->setData(Qt::TextColorRole, QColor(userColor));
+    item->setData(Qt::UserRole, userId);
     item->setText(userName);
-    item->setIcon(QIcon(QString(":/icons/gender-%1.png").arg(gender)));
+    item->setIcon(QIcon(QString(":/icons/online-1.png")));
 
     ui->listWidget_users->addItem(item);
 }
@@ -239,30 +228,26 @@ void Widget::addUsers(const QJsonArray &users)
         QJsonObject user = v.toObject();
         int userId = user.value("userId").toInt();
         QString userName = user.value("userName").toString();
-        Gender gender = Gender(user.value("gender").toInt());
-        QString userColor = user.value("userColor").toString();
 
         if (userId == m_userId) {
             continue;
         }
 
-        addUser(userId, userName, gender, userColor);
+        addUser(userId, userName);
     }
 }
 
-void Widget::onUserDisconnected(int userId, const QString &userName, Widget::Gender gender, const QString &userColor)
+void Widget::onUserDisconnected(int userId, const QString &userName)
 {
     // Удаляем из списка вышедшего пользователя
     removeUser(userId);
 
     // Добавляем сообщение о выходе
     QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i><b><a style='color:%2' href='action://putUserName?userName=%3&userId=%5'>%3</a></b>"
-                           " %4 из чата</i></span>")
+                           "<i><b><a href='action://putUserName?userName=%2&userId=%3'>%2</a></b>"
+                           " вышел из чата</i></span>")
             .arg(datetime())
-            .arg(userColor)
             .arg(userName)
-            .arg(gender == 2 ? "вышла" : "вышел")
             .arg(userId);
 
     ui->textBrowser->append(html);
@@ -272,29 +257,26 @@ void Widget::removeUser(int userId)
 {
     for (int i = 0; i < ui->listWidget_users->count(); i++) {
         QListWidgetItem *item = ui->listWidget_users->item(i);
-        if (item->data(UserIdRole).toInt() == userId) {
-            delete item;
+        if (item->data(Qt::UserRole).toInt() == userId) {
+            m_online = 0;
+            item->setIcon(QIcon(QString(":/icons/online-0.png").arg(m_online)));
             break;
         }
     }
 }
 
 void Widget::onConnectionLost(int userId,
-                              const QString &userName,
-                              Widget::Gender gender,
-                              const QString &userColor)
+                              const QString &userName)
 {
-    Q_UNUSED(gender);
 
     // Удаляем из списка отвалившегося пользователя
     removeUser(userId);
 
     // Добавляем сообщение
     QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i>Соединение с <b style='color:%2'>%3</b>"
+                           "<i>Соединение с <b>%2</b>"
                            " потеряно</i></span>")
             .arg(datetime())
-            .arg(userColor)
             .arg(userName);
 
     ui->textBrowser->append(html);
@@ -302,7 +284,6 @@ void Widget::onConnectionLost(int userId,
 
 void Widget::onPublicMessage(int userId,
                              const QString &userName,
-                             const QString &userColor,
                              const QString &text)
 {
     if (text.contains("<b>" + m_userName + "</b>")) {
@@ -310,10 +291,9 @@ void Widget::onPublicMessage(int userId,
         qApp->alert(this);
     }
 
-    QString html = QString("%1 <b><a style='color:%2' href='action://putUserName?userName=%3&userId=%5'>%3:</a></b>"
-                           " <span style='color:#34495e'>%4</span>")
+    QString html = QString("%1 <b><a href='action://putUserName?userName=%2&userId=%4'>%2:</a></b>"
+                           " <span style='color:#34495e'>%3</span>")
             .arg(datetime())
-            .arg(userColor)
             .arg(userName)
             .arg(text)
             .arg(userId);
@@ -323,16 +303,14 @@ void Widget::onPublicMessage(int userId,
 
 void Widget::onPrivateMessage(int userId,
                               const QString &userName,
-                              const QString &userColor,
                               const QString &text)
 {
     qApp->beep();
     qApp->alert(this);
 
-    QString html = QString("%1 <b>%6</b> <b><a style='color:%2' href='action://putUserName?userName=%3&userId=%5'>%3:</a></b>"
-                           " <span style='color:#34495e'>%4</span>")
+    QString html = QString("%1 <b>%5</b> <b><a href='action://putUserName?userName=%2&userId=%4'>%2:</a></b>"
+                           " <span style='color:#34495e'>%3</span>")
             .arg(datetime())
-            .arg(userColor)
             .arg(userName)
             .arg(text)
             .arg(userId)
@@ -447,35 +425,33 @@ void Widget::onTextMessageReceived(const QString &message)
     else {
         int userId = messageData.value("userId").toInt();
         QString userName = messageData.value("userName").toString();
-        Gender gender = Gender(messageData.value("gender").toInt());
-        QString userColor = messageData.value("userColor").toString();
 
         if (action == "Authorized") {
-            onUserAuthorized(userId, userName, gender);
+            onUserAuthorized(userId, userName);
             QJsonArray users = messageData.value("users").toArray();
             addUsers(users);
         }
 
         else if (action == "Connected") {
-            onUserConnected(userId, userName, gender, userColor);
+            onUserConnected(userId, userName);
         }
 
         else if (action == "Disconnected") {
-            onUserDisconnected(userId, userName, gender, userColor);
+            onUserDisconnected(userId, userName);
         }
 
         else if (action == "ConnectionLost") {
-            onConnectionLost(userId, userName, gender, userColor);
+            onConnectionLost(userId, userName);
         }
 
         else if (action == "PublicMessage") {
             QString text = messageData.value("text").toString();
-            onPublicMessage(userId, userName, userColor, text);
+            onPublicMessage(userId, userName, text);
         }
 
         else if (action == "PrivateMessage") {
             QString text = messageData.value("text").toString();
-            onPrivateMessage(userId, userName, userColor, text);
+            onPrivateMessage(userId, userName, text);
         }
 
         else {

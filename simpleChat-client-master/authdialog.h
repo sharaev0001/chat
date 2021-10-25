@@ -47,8 +47,6 @@ public:
         QString server;
         int port;
         QString userName;
-        int gender;
-        QString userColor;
     };
 
     void setConnectionData(const ConnectionData &connectionData);

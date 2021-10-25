@@ -22,30 +22,7 @@ $worker->onConnect = function($connection) use(&$connections)
         }
         else {
             $originalUserName = 'Инкогнито';
-        }
-        
-        // Половая принадлежность, если указана
-        // 0 - Неизвестный пол
-        // 1 - М
-        // 2 - Ж
-        if (isset($_GET['gender'])) {
-            $gender = (int) $_GET['gender'];
-        }
-        else {
-            $gender = 0;
-        }
-        
-        if ($gender != 0 && $gender != 1 && $gender != 2) 
-            $gender = 0;
-        
-        // Цвет пользователя
-        if (isset($_GET['userColor'])) {
-            $userColor = $_GET['userColor'];
-        }
-        else {
-            $userColor = "#000000";
-        }
-                
+        }        
         // Проверяем уникальность имени в чате
         $userName = $originalUserName;
         
@@ -66,11 +43,8 @@ $worker->onConnect = function($connection) use(&$connections)
         // Добавляем соединение в список
         // + мы можем добавлять произвольные поля в $connection
         //   и затем читать их из любой функции:
-        $connection->userName = $userName; 
-        $connection->gender = $gender;
-        $connection->userColor = $userColor;
+        $connection->userName = $userName;
         $connection->pingWithoutResponseCount = 0; // счетчик безответных пингов
-        
         $connections[$connection->id] = $connection;
         
         // Собираем список всех пользователей
@@ -81,9 +55,7 @@ $worker->onConnect = function($connection) use(&$connections)
             // идентификатор пользователя 'userId'.
             $users[] = [
                 'userId' => $c->id,
-                'userName' => $c->userName,
-                'gender' => $c->gender,
-                'userColor' => $c->userColor
+                'userName' => $c->userName
             ];
         }
         
@@ -92,8 +64,6 @@ $worker->onConnect = function($connection) use(&$connections)
             'action' => 'Authorized',
             'userId' => $connection->id,
             'userName' => $connection->userName,
-            'gender' => $connection->gender,
-            'userColor' => $connection->userColor,
             'users' => $users
         ];
         $connection->send(json_encode($messageData));
@@ -102,9 +72,7 @@ $worker->onConnect = function($connection) use(&$connections)
         $messageData = [
             'action' => 'Connected',
             'userId' => $connection->id,
-            'userName' => $connection->userName,
-            'gender' => $connection->gender,
-            'userColor' => $connection->userColor
+            'userName' => $connection->userName
         ];
         $message = json_encode($messageData);
         
@@ -128,9 +96,7 @@ $worker->onClose = function($connection) use(&$connections)
     $messageData = [
         'action' => 'Disconnected',
         'userId' => $connection->id,
-        'userName' => $connection->userName,
-        'gender' => $connection->gender,
-        'userColor' => $connection->userColor
+        'userName' => $connection->userName
     ];
     $message = json_encode($messageData);
     
@@ -152,9 +118,7 @@ $worker->onWorkerStart = function($worker) use (&$connections)
                 $messageData = [
                     'action' => 'ConnectionLost',
                     'userId' => $c->id,
-                    'userName' => $c->userName,
-                    'gender' => $c->gender,
-                    'userColor' => $c->userColor
+                    'userName' => $c->userName
                 ];
                 $message = json_encode($messageData);
                 
@@ -177,6 +141,7 @@ $worker->onMessage = function($connection, $message) use (&$connections)
 {
     // распаковываем json
     $messageData = json_decode($message, true);
+    
     // проверяем наличие ключа 'toUserId', который используется для отправки приватных сообщений
     $toUserId = isset($messageData['toUserId']) ? (int) $messageData['toUserId'] : 0;
     $action = isset($messageData['action']) ? $messageData['action'] : '';
@@ -189,8 +154,7 @@ $worker->onMessage = function($connection, $message) use (&$connections)
         // Все остальные сообщения дополняем данными об отправителе
         $messageData['userId'] = $connection->id;
         $messageData['userName'] = $connection->userName;
-        $messageData['gender'] = $connection->gender;
-        $messageData['userColor'] = $connection->userColor;
+        
         
         // Преобразуем специальные символы в HTML-сущности в тексте сообщения
         $messageData['text'] = htmlspecialchars($messageData['text']);
