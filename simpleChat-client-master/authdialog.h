@@ -56,4 +56,4 @@ private:
     Ui::AuthDialog *ui;
 };
 
-#endif // AUTHDIALOG_H
+#endif

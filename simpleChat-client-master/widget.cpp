@@ -45,50 +45,38 @@ Widget::Widget(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->textBrowser->setContextMenuPolicy(Qt::NoContextMenu);
-
-    // По умолчанию мы отправляем сообщения в общий чат
+    //по умолчанию отправляем в общий чат
     closePrivateMessage();
 
-    // Обработка клика по кнопке закрытия приватного режима
-    connect(ui->toolButton_closePrivateMessage, &QToolButton::clicked,
-            this, &Widget::closePrivateMessage);
+    //Закрываем личный чат при нажатии на крестик
+    connect(ui->toolButton_closePrivateMessage, &QToolButton::clicked, this, &Widget::closePrivateMessage);
 
-    // Обработка двойного клика по пользователю из списка.
-    // При двойном клике мы активируем отправку приватного сообщения.
-    connect(ui->listWidget_users, &QListWidget::itemDoubleClicked,
-            this, &Widget::privateWithUserFromItem);
+    //Включаем приватный чат при двойном клике на пользователя в списке
+    connect(ui->listWidget_users, &QListWidget::itemDoubleClicked, this, &Widget::privateWithUserFromItem);
 
-    // Блокируем поле ввода сообщения до тех пор,
-    // пока соединение с сервером не будет установлено
+    // Блокируем поле ввода сообщения до тех пор, пока соединение с сервером не будет установлено
     ui->lineEdit_message->setEnabled(false);
 
     // Соединяем сигнал нажатия кнопки Return со слотом отправки сообщения
-    connect(ui->lineEdit_message, &QLineEdit::returnPressed,
-            this, &Widget::onReturnPressed);
+    connect(ui->lineEdit_message, &QLineEdit::returnPressed, this, &Widget::onReturnPressed);
 
     // Обработка клика по ссылкам
-    connect(ui->textBrowser, &QTextBrowser::anchorClicked,
-            this, &Widget::onAnchorClicked);
+    connect(ui->textBrowser, &QTextBrowser::anchorClicked, this, &Widget::onAnchorClicked);
 
     // Таймер для пингования сервера, чтобы указать, что соединение все еще живо
-    connect(m_pingTimer, SIGNAL(timeout()), m_webSocket, SLOT(ping()));
+    //connect(m_pingTimer, SIGNAL(timeout()), m_webSocket, SLOT(ping()));
 
-    // Соединяем сигналы websocket-клиента
-    // Подключение к серверу
-    connect(m_webSocket, &QWebSocket::connected,
-            this, &Widget::onConnected);
+    // Соединяем сигналы websocket-клиента Подключение к серверу
+    connect(m_webSocket, &QWebSocket::connected, this, &Widget::onConnected);
 
     // Отключение от сервера
-    connect(m_webSocket, &QWebSocket::disconnected,
-            this, &Widget::onDisconnected);
+    connect(m_webSocket, &QWebSocket::disconnected, this, &Widget::onDisconnected);
 
     // Ошибки сокета
-    connect(m_webSocket, SIGNAL(error(QAbstractSocket::SocketError)),
-            this, SLOT(onError(QAbstractSocket::SocketError)));
+    connect(m_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
 
     // Получение сообщения с сервера
-    connect(m_webSocket, &QWebSocket::textMessageReceived,
-            this, &Widget::onTextMessageReceived);
+    connect(m_webSocket, &QWebSocket::textMessageReceived, this, &Widget::onTextMessageReceived);
 
     restoreConnectionData();
 }
@@ -101,9 +89,7 @@ Widget::~Widget()
 
 void Widget::saveConnectionData()
 {
-    QSettings settings(qApp->applicationDirPath() + "/settings.ini",
-                       QSettings::IniFormat);
-
+    QSettings settings(qApp->applicationDirPath() + "/settings.ini", QSettings::IniFormat);
     settings.setValue("server", m_connectionData.server);
     settings.setValue("port", m_connectionData.port);
     settings.setValue("userName", m_connectionData.userName);
@@ -111,32 +97,25 @@ void Widget::saveConnectionData()
 
 void Widget::restoreConnectionData()
 {
-    QSettings settings(qApp->applicationDirPath() + "/settings.ini",
-                       QSettings::IniFormat);
-
+    QSettings settings(qApp->applicationDirPath() + "/settings.ini", QSettings::IniFormat);
     m_connectionData.server = settings.value("server", "127.0.0.1").toString();
-    m_connectionData.port = settings.value("port", 27800).toInt();
-    m_connectionData.userName = settings.value("userName", "Инкогнито").toString();
+    m_connectionData.port = settings.value("port", 61523).toInt();
+    m_connectionData.userName = settings.value("userName", "Incognito").toString();
 }
 
 void Widget::connectToServer()
 {
     AuthDialog authDialog(this);
     authDialog.setConnectionData(m_connectionData);
-
     int result = authDialog.exec();
-
     if (result == AuthDialog::Accepted) {
         m_connectionData = authDialog.connectionData();
-
-        QString html = QString("%1 <span style='color:#7f8c8d'>"
-                               "<i>Установка соединения с <b>%2:%3</b>...</span>")
+        QString html = QString("%1 <span style='color:#7f8c8d'><i>Установка соединения с <b>%2:%3</b>...</span>")
                 .arg(datetime())
                 .arg(m_connectionData.server)
                 .arg(m_connectionData.port);
         ui->textBrowser->append(html);
-
-        m_webSocket->open(QUrl(QString("ws://%1:%2?userName=%3&userColor=%4&gender=%5")
+        m_webSocket->open(QUrl(QString("ws://%1:%2?userName=%3")
                                .arg(m_connectionData.server)
                                .arg(m_connectionData.port)
                                .arg(m_connectionData.userName)));
@@ -149,23 +128,19 @@ void Widget::connectToServer()
 
 void Widget::closePrivateMessage()
 {
-    // "0" указывает на то, что отправляем сообщение в общий чат
-    m_toUserId = 0;
+    // "" указывает на то, что отправляем сообщение в общий чат
+    m_toUserName = "";
     ui->toolButton_closePrivateMessage->hide();
-
     ui->label_receiver->setText(QString("Отправить в общий чат"));
 }
 
 void Widget::privateWithUserFromItem(QListWidgetItem *item)
 {
-
-    m_toUserId = item->data(Qt::UserRole).toInt();
+    m_toUserName = item->text();
+    m_toUserOnline = item->data(Qt::UserRole).toInt();
     ui->toolButton_closePrivateMessage->show();
-
-    QString toUserName = item->text();// Было item->data(UserNameRole).toString();
-
     ui->label_receiver->setText(QString("Отправить пользователю %1")
-                                .arg(toUserName));
+                                .arg(m_toUserName));
 }
 
 QString Widget::datetime()
@@ -175,50 +150,43 @@ QString Widget::datetime()
     return html;
 }
 
-void Widget::onUserAuthorized(int userId,
-                              const QString &userName)
+void Widget::onUserAuthorized(const QString &userName)
 {
     // При авторизации сохраняем данные "о себе"
-    m_userId = userId;
     m_userName = userName;
-
-    m_online = 1;
-
-    QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i>Вы авторизованы с именем <b>%2</b></span>")
+    QString html = QString("%1 <span style='color:#7f8c8d'><i>Вы авторизованы с именем <b>%2</b></span>")
             .arg(datetime())
             .arg(userName);
     ui->textBrowser->append(html);
 }
 
-void Widget::onUserConnected(int userId,
-                           const QString &userName)
+void Widget::onUserConnected(const QString &userName)
 {
-    // При подключении нового пользователя, добавляем его в список
-    addUser(userId, userName);
+    bool duplicate = false;
+    for (int i = 0; i < ui->listWidget_users->count(); i++) {
+        QListWidgetItem *item = ui->listWidget_users->item(i);
+        if (item->text() == userName) {
+            item->setData(Qt::UserRole,1);
+            item->setIcon(QIcon(QString(":/icons/online-1.png")));
+            duplicate = true;
+            break;
+        }
+    }
+    if(!duplicate)
+        addUser(userName,1);
 
-    // Добавляем сообщение о входе
-    QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i><b><a href='action://putUserName?userName=%2&userId=%3'>%2</a></b>"
-                           " вошел в чат</i></span>")
+    QString html = QString("%1 <span style='color:#7f8c8d'><i><b><a href='action://putUserName?userName=%2'>%2</a></b> вошел в чат</i></span>")
             .arg(datetime())
-            .arg(userName)
-            .arg(userId);
-
+            .arg(userName);
     ui->textBrowser->append(html);
 }
 
-void Widget::addUser(int userId,
-                     const QString &userName)
+void Widget::addUser(const QString &userName, int userOnline)
 {
     QListWidgetItem *item = new QListWidgetItem;
-
-    item->setData(UserIdRole, userId);
-    item->setData(UserNameRole, userName);
-    item->setData(Qt::UserRole, userId);
     item->setText(userName);
-    item->setIcon(QIcon(QString(":/icons/online-1.png")));
-
+    item->setIcon(QIcon(QString(":/icons/online-%1.png").arg(userOnline)));
+    item->setData(Qt::UserRole,userOnline);
     ui->listWidget_users->addItem(item);
 }
 
@@ -226,103 +194,65 @@ void Widget::addUsers(const QJsonArray &users)
 {
     foreach (QJsonValue v, users) {
         QJsonObject user = v.toObject();
-        int userId = user.value("userId").toInt();
         QString userName = user.value("userName").toString();
-
-        if (userId == m_userId) {
+        int userOnline = user.value("userOnline").toInt();
+        if (userName == m_userName) {
             continue;
         }
-
-        addUser(userId, userName);
+        addUser(userName, userOnline);
     }
 }
 
-void Widget::onUserDisconnected(int userId, const QString &userName)
+void Widget::onUserDisconnected(const QString &userName)
 {
-    // Удаляем из списка вышедшего пользователя
-    removeUser(userId);
-
-    // Добавляем сообщение о выходе
-    QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i><b><a href='action://putUserName?userName=%2&userId=%3'>%2</a></b>"
-                           " вышел из чата</i></span>")
+    removeUser(userName);
+    QString html = QString("%1 <span style='color:#7f8c8d'><i><b><a href='action://putUserName?userName=%2'>%2</a></b> вышел из чата</i></span>")
             .arg(datetime())
-            .arg(userName)
-            .arg(userId);
-
+            .arg(userName);
     ui->textBrowser->append(html);
 }
 
-void Widget::removeUser(int userId)
+void Widget::removeUser(const QString &userName)
 {
     for (int i = 0; i < ui->listWidget_users->count(); i++) {
         QListWidgetItem *item = ui->listWidget_users->item(i);
-        if (item->data(Qt::UserRole).toInt() == userId) {
-            m_online = 0;
-            item->setIcon(QIcon(QString(":/icons/online-0.png").arg(m_online)));
+        if (item->text() == userName) {
+            item->setData(Qt::UserRole,0);
+            item->setIcon(QIcon(QString(":/icons/online-0.png")));
             break;
         }
     }
 }
 
-void Widget::onConnectionLost(int userId,
-                              const QString &userName)
-{
-
-    // Удаляем из списка отвалившегося пользователя
-    removeUser(userId);
-
-    // Добавляем сообщение
-    QString html = QString("%1 <span style='color:#7f8c8d'>"
-                           "<i>Соединение с <b>%2</b>"
-                           " потеряно</i></span>")
-            .arg(datetime())
-            .arg(userName);
-
-    ui->textBrowser->append(html);
-}
-
-void Widget::onPublicMessage(int userId,
-                             const QString &userName,
-                             const QString &text)
+void Widget::onPublicMessage(const QString &userName, const QString &text)
 {
     if (text.contains("<b>" + m_userName + "</b>")) {
         qApp->beep();
         qApp->alert(this);
     }
-
-    QString html = QString("%1 <b><a href='action://putUserName?userName=%2&userId=%4'>%2:</a></b>"
-                           " <span style='color:#34495e'>%3</span>")
+    QString html = QString("%1 <b><a href='action://putUserName?userName=%2'>%2:</a></b> <span style='color:#34495e'>%3</span>")
             .arg(datetime())
             .arg(userName)
-            .arg(text)
-            .arg(userId);
-
+            .arg(text);
     ui->textBrowser->append(html);
 }
 
-void Widget::onPrivateMessage(int userId,
-                              const QString &userName,
-                              const QString &text)
+void Widget::onPrivateMessage(const QString &userName,const QString &toUserName ,const QString &text)
 {
     qApp->beep();
     qApp->alert(this);
 
-    QString html = QString("%1 <b>%5</b> <b><a href='action://putUserName?userName=%2&userId=%4'>%2:</a></b>"
-                           " <span style='color:#34495e'>%3</span>")
+    QString html = QString("%1 <b>%4</b> <b><a href='action://putUserName?userName=%2'>%2:</a></b> <span style='color:#34495e'>%3</span>")
             .arg(datetime())
-            .arg(userName)
+            .arg(userName == m_userName ? toUserName : userName)
             .arg(text)
-            .arg(userId)
-            .arg(userId == m_userId ? "&lt;" : "&gt;");
-
+            .arg(userName == m_userName ? "Otpravil usery " : "Prinyal ot ");
     ui->textBrowser->append(html);
 }
 
 void Widget::onConnected()
 {
     m_pingTimer->start(15 * 1000); // пингуем сервер каждые 15 сек
-
     QString html = QString("%1 <span style='color:#16a085'><i>Соединение установлено!</i></span>")
             .arg(datetime());
     ui->textBrowser->append(html);
@@ -334,12 +264,10 @@ void Widget::onDisconnected()
 {
     m_pingTimer->stop();
     ui->listWidget_users->clear();
-
     QString html = QString("%1 <span style='color:#c0392b'><i>Соединение разорвано.</i></span>")
             .arg(datetime());
     ui->textBrowser->append(html);
     ui->lineEdit_message->setEnabled(false);
-
     // Через пять сек мы снова пытаемся соединиться с сервером
     QTimer::singleShot(5000, this, &Widget::connectToServer);
 }
@@ -348,7 +276,6 @@ void Widget::onError(QAbstractSocket::SocketError error)
 {
     m_pingTimer->stop();
     ui->listWidget_users->clear();
-
     QString html = QString("%1 <span style='color:#c0392b'>Ошибка сокета №%2: %3</span>")
             .arg(datetime())
             .arg(error)
@@ -372,8 +299,9 @@ void Widget::onReturnPressed()
 
     // Собираем данные сообщения
     QJsonObject messageData;
-    messageData.insert("toUserId", m_toUserId);
+    messageData.insert("toUserName", m_toUserName);
     messageData.insert("text", text);
+    messageData.insert("toUserOnline",m_toUserOnline);
 
     // Преобразуем JSON-объект в строку
     QByteArray message = QJsonDocument(messageData).toJson(QJsonDocument::Compact);
@@ -402,61 +330,35 @@ void Widget::onAnchorClicked(const QUrl &url)
     ui->lineEdit_message->setFocus();
 }
 
-void Widget::sendPong()
-{
-    QJsonObject messageData;
-    messageData.insert("action", "Pong");
-    QByteArray message = QJsonDocument(messageData).toJson(QJsonDocument::Compact);
-    m_webSocket->sendTextMessage(message);
-}
-
 void Widget::onTextMessageReceived(const QString &message)
 {
     // Преобразуем полученное сообщение в JSON-объект
     QJsonObject messageData = QJsonDocument::fromJson(message.toUtf8()).object();
-
     QString action = messageData.value("action").toString();
+    QString userName = messageData.value("userName").toString();
 
-    if (action == "Ping") {
-        // В ответ на "Ping" клиент должен послать действие "Pong",
-        // чтобы сервер понял, что клиент в онлайне
-        sendPong();
-    }
-    else {
-        int userId = messageData.value("userId").toInt();
-        QString userName = messageData.value("userName").toString();
-
-        if (action == "Authorized") {
-            onUserAuthorized(userId, userName);
-            QJsonArray users = messageData.value("users").toArray();
-            addUsers(users);
-        }
-
-        else if (action == "Connected") {
-            onUserConnected(userId, userName);
-        }
-
-        else if (action == "Disconnected") {
-            onUserDisconnected(userId, userName);
-        }
-
-        else if (action == "ConnectionLost") {
-            onConnectionLost(userId, userName);
-        }
-
-        else if (action == "PublicMessage") {
-            QString text = messageData.value("text").toString();
-            onPublicMessage(userId, userName, text);
-        }
-
-        else if (action == "PrivateMessage") {
-            QString text = messageData.value("text").toString();
-            onPrivateMessage(userId, userName, text);
-        }
-
-        else {
-            // неизвестное действие
-            qWarning() << "unknown action: " << action;
-        }
-    }
+    if (action == "Authorized") {
+        onUserAuthorized(userName);
+        QJsonArray users = messageData.value("users").toArray();
+        addUsers(users);
+     }
+     else if (action == "Connected") {
+        onUserConnected(userName);
+     }
+     else if (action == "Disconnected") {
+        onUserDisconnected(userName);
+     }
+     else if (action == "PublicMessage") {
+        QString text = messageData.value("text").toString();
+        onPublicMessage(userName, text);
+     }
+     else if (action == "PrivateMessage") {
+        QString text = messageData.value("text").toString();
+        QString toUserName = messageData.value("toUserName").toString();
+        onPrivateMessage(userName,toUserName, text);
+     }
+     else {
+        // неизвестное действие
+        qWarning() << "unknown action: " << action;
+     }
 }

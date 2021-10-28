@@ -44,44 +44,20 @@ class Widget : public QWidget
 public:
     explicit Widget(QWidget *parent = nullptr);
     ~Widget();
-
     void restoreConnectionData();
     void saveConnectionData();
-
-    enum ItemRole {
-        UserIdRole,
-        UserNameRole
-    };
-
     void connectToServer();
     void closePrivateMessage();
     void privateWithUserFromItem(QListWidgetItem *item);
-
     QString datetime();
-
-    void onUserAuthorized(int userId,
-                          const QString &userName);
-
-    void onUserConnected(int userId,
-                         const QString &userName);
-    void addUser(int userId,
-                 const QString &userName);
+    void onUserAuthorized(const QString &userName);
+    void onUserConnected(const QString &userName);
+    void addUser(const QString &userName, int userOnline);
     void addUsers(const QJsonArray &users);
-
-    void onUserDisconnected(int userId,
-                            const QString &userName);
-    void removeUser(int userId);
-
-    void onConnectionLost(int userId,
-                          const QString &userName);
-
-    void onPublicMessage(int userId,
-                         const QString &userName,
-                         const QString &text);
-
-    void onPrivateMessage(int userId,
-                          const QString &userName,
-                          const QString &text);
+    void onUserDisconnected(const QString &userName);
+    void removeUser(const QString &userName);
+    void onPublicMessage(const QString &userName, const QString &text);
+    void onPrivateMessage(const QString &userName, const QString &toUserName, const QString &text);
 
 public slots:
     void onConnected();
@@ -89,7 +65,6 @@ public slots:
     void onError(QAbstractSocket::SocketError error);
     void onReturnPressed();
     void onAnchorClicked(const QUrl &url);
-    void sendPong();
     void onTextMessageReceived(const QString &message);
 
 private:
@@ -99,12 +74,10 @@ private:
 
     AuthDialog::ConnectionData m_connectionData;
 
-    int m_toUserId; // кому отправляем сообщение
-    int m_online; //проверка онлайна
-    int m_userId; // id нашего соединения
-
+    QString m_toUserName; // кому отправляем сообщение
+    int m_toUserOnline; //проверка онлайна
     QString m_userName; // имя пользователя
 
 };
 
-#endif // WIDGET_H
+#endif

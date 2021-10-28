@@ -1,1 +1,42 @@
 /vendor
+/mysql
+composer.jcon
+composer.lock
+
+# Qt-es
+/SimpleChat-client-master/object_script.*.Release
+/SimpleChat-client-master/object_script.*.Debug
+/SimpleChat-client-master/*_plugin_import.cpp
+/SimpleChat-client-master/.qmake.cache
+/SimpleChat-client-master/.qmake.stash
+/SimpleChat-client-master/*.pro.user
+/SimpleChat-client-master/*.pro.user.*
+/SimpleChat-client-master/*.qbs.user
+/SimpleChat-client-master/*.qbs.user.*
+/SimpleChat-client-master/*.moc
+/SimpleChat-client-master/moc_*.cpp
+/SimpleChat-client-master/moc_*.h
+/SimpleChat-client-master/qrc_*.cpp
+/SimpleChat-client-master/ui_*.h
+/SimpleChat-client-master/*.qmlc
+/SimpleChat-client-master/*.jsc
+/SimpleChat-client-master/Makefile*
+/SimpleChat-client-master/*build-*
+
+# Qt unit tests
+/SimpleChat-client-master/target_wrapper.*
+
+# QtCreator
+/SimpleChat-client-master/*.autosave
+
+# QtCreator Qml
+/SimpleChat-client-master/*.qmlproject.user
+/SimpleChat-client-master/*.qmlproject.user.*
+
+# QtCreator CMake
+/SimpleChat-client-master/CMakeLists.txt.user*
+
+# Microsoft Visual Studio
+/SimpleChat-client-master/*.vs
+/SimpleChat-client-master/*x64
+/SimpleChat-client-master/*release

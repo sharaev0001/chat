@@ -34,10 +34,8 @@ AuthDialog::AuthDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    connect(ui->pushButton_reject, &QPushButton::clicked,
-            this, &AuthDialog::reject);
-    connect(ui->pushButton_connect, &QPushButton::clicked,
-            this, &AuthDialog::accept);
+    connect(ui->pushButton_reject, &QPushButton::clicked, this, &AuthDialog::reject);
+    connect(ui->pushButton_connect, &QPushButton::clicked, this, &AuthDialog::accept);
 }
 
 AuthDialog::~AuthDialog()
